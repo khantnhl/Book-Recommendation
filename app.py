@@ -1,39 +1,56 @@
-from flask import Flask
+from flask import Flask, request, render_template
+from groq import Groq
+import os
 import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
-# Define the RecommendationModel class
-class RecommendationModel:
-    def __init__(self):
-        self.vectorizer = TfidfVectorizer(stop_words="english")
-        self.book_data = None
-        self.book_vectors = None
 
-    def train(self, book_data):
-        self.book_data = book_data
-        self.book_vectors = self.vectorizer.fit_transform(book_data["description"])
+#load model
+tfidf = joblib.load('models/tfidf.pkl')
+scaler = joblib.load('models/maxscaler.pkl')
+svd = joblib.load('models/svd.pkl')
+birchmodel = joblib.load('models/birchmodel.pkl')
 
-    def recommend(self, query, top_n=5):
-        query_vector = self.vectorizer.transform([query])
-        similarities = cosine_similarity(query_vector, self.book_vectors).flatten()
-        top_indices = similarities.argsort()[-top_n:][::-1]
-        return self.book_data.iloc[top_indices]["title"].tolist()
-
-# Load the model
-try:
-    recommender = joblib.load("data/recommendation_model.pkl")
-    print("Model loaded successfully!")
-except Exception as e:
-    print(f"Error loading the model: {e}")
-    recommender = None
 
 # Initialize Flask app
 app = Flask(__name__)
+client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
-@app.route("/")
-def home():
-    return "Welcome to the Recommendation System API!"
+
+@app.route("/", methods = ["GET", "POST"])
+def index():
+    if request.method == "POST":
+
+        # Get inputs from form
+        title_input = request.form.get("title")
+        subject_input = request.form.get("subject")
+        synopsis_input = request.form.get("synopsis")
+        
+        merged_input = f"{title_input} {subject_input} {synopsis_input}"
+        
+         # Process and predict
+        tfidf_features = tfidf.transform([merged_input])
+        scaled_features = scaler.transform(tfidf_features)
+        predicted_cluster = birchmodel.predict(scaled_features)[0]
+
+
+        # Call the Groq API
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are a knowledgeable assistant in literature."},
+                {"role": "user", "content": user_prompt},
+            ],
+            model="llama3-70b-8192",
+            temperature=0.5,
+            max_tokens=8000,
+            top_p=1,
+            stop=None,
+        )
+
+        # Render the response
+        return render_template("response.html", response=response["choices"][0]["message"]["content"])
+
+    return render_template("input_form.html")
+
 
 if __name__ == "__main__":
     app.run(debug=True)
