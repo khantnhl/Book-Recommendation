@@ -41,12 +41,13 @@ def test_recommendation():
         if response.status_code == 200:
             recommendations = response.json()
             print("\nRecommendations:")
-            for i, rec in enumerate(recommendations['recommendations'], 1):
-                print(f"\nRecommendation {i}:")
-                print(f"Title: {rec['title']}")
-                print(f"Subjects: {rec['subjects']}")
-                print(f"Publisher: {rec['publisher']}")
-                print(f"Similarity Score: {rec['similarity_score']:.4f}")
+            # for i, rec in enumerate(recommendations['recommendations'], 1):
+            #     print(f"\nRecommendation {i}:")
+            #     print(f"Title: {rec['title']}")
+            #     print(f"Subjects: {rec['subjects']}")
+            #     print(f"Publisher: {rec['publisher']}")
+            #     print(f"Similarity Score: {rec['similarity_score']:.4f}")
+            print("HERE: ", recommendations)
         else:
             print(f"\nError Response:")
             print(f"Status Code: {response.status_code}")
@@ -57,7 +58,7 @@ def test_recommendation():
     except json.JSONDecodeError:
         print("Error: Could not decode the response JSON")
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error here: {str(e)}")
 
 if __name__ == '__main__':
     test_recommendation()

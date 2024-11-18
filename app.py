@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import pickle
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from flask_cors import CORS
+from groq import Groq
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
@@ -67,16 +68,17 @@ def recommend():
             
             # Load original data
             df = pd.read_csv('data/isbndb-caribbean-books.csv', encoding= 'latin1')
-            
+            df.fillna("Unknown", inplace=True)
+
             # Format results
             results = {
                 'recommendations': [
                     {
                         'index': int(idx),
                         'similarity_score': float(score),
-                        'title': df.iloc[idx]['title'],
-                        'subjects': df.iloc[idx]['subjects'],
-                        'publisher': df.iloc[idx].get('publisher', '')
+                        'title': df.iloc[idx]['title'] if pd.notna(df.iloc[idx]['title']) else "Unknown",
+                        'subjects': df.iloc[idx]['subjects']  if pd.notna(df.iloc[idx]['subjects']) else "Unknown",
+                        'publisher': df.iloc[idx]['publisher']  if pd.notna(df.iloc[idx].get('publisher', '')) else "Unknown",
                     }
                     for idx, score in zip(top_indices, top_scores)
                 ]
@@ -84,7 +86,7 @@ def recommend():
             
             print(f'RESULTS: {results}')
 
-            return jsonify(results['recommendations'])
+            return jsonify(results)
             
         except Exception as e:
             print(f"Error processing request: {e}")  # Debug print
@@ -94,7 +96,8 @@ def recommend():
 
 @app.route('/')
 def home():
-    return "Book Recommendation API is running!"
+    print("Book Recommendation API is running!")
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8000)
